@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="ARCA">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Kaushan+Script&display=swap">
 <style>
 :root{
   color-scheme:light;
@@ -158,6 +158,9 @@ div.info{background:var(--sky-l);color:var(--sky-d);border-radius:10px;padding:9
 .lbox{width:min(420px,100%)}
 .lhead{text-align:center;margin-bottom:16px}
 .lhead img{height:84px;margin:0 auto 6px;filter:drop-shadow(0 4px 10px rgba(30,80,130,.25))}
+/* letra do logótipo da ARCA (Mistral). A Mistral é um tipo de letra do Windows/Office (não pode ser incluída na página): usa-se a do computador e, onde não existir, uma letra manuscrita parecida */
+@font-face{font-family:"ArcaLogo";src:local("Mistral"),local("MISTRAL");size-adjust:128%}
+.lhead h1,.lhead .gest{font-family:ArcaLogo,"Kaushan Script","Segoe Script",cursive!important;font-style:normal!important;font-weight:400!important;letter-spacing:.5px}
 .lhead h1{font-family:Fraunces,Georgia,serif;font-size:26px;color:var(--navy)}
 .lcard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 12px 30px rgba(30,60,90,.1)}
 .lcard label.f{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin:10px 0 4px}
@@ -798,7 +801,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.5|13/10/2026 09:44'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.6|13/10/2026 16:34'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 var SHORT={oficios:'Ofícios',atl:'ATL',salas:'Salas',inscricoes:'Inscrições',parceiros:'Benefícios',cartazes:'Cartazes'};
 function buildNav(){
   var n=$('#nav'); n.innerHTML='';
