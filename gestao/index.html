@@ -801,7 +801,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9|24/11/2026 20:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.2|24/11/2026 21:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 var SHORT={oficios:'Ofícios',atl:'ATL',salas:'Salas',inscricoes:'Inscrições',parceiros:'Benefícios',cartazes:'Cartazes'};
 function buildNav(){
   var n=$('#nav'); n.innerHTML='';
@@ -1625,7 +1625,7 @@ function injectCSS(){
   '.s2-main{flex:1;min-width:0}',
   '.s2-name{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
   '.s2-tipo{display:inline-block;font-weight:700;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;padding:1px 8px;border-radius:99px;vertical-align:1px}',
-  '.s2-mail{color:#4F6B86}',
+  'a.s2-mail{display:block;color:#1E6FAE;text-decoration:none;width:fit-content;max-width:100%}a.s2-mail:hover,a.s2-tel:hover{text-decoration:underline}a.s2-tel{color:#1E6FAE;text-decoration:none}',
   '.s2-sub{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
   '.chip.new{background:var(--sky-l);color:var(--sky-d)}',
   '.s2-sit{text-align:right;flex:0 0 auto;min-width:130px}',
@@ -1658,6 +1658,19 @@ function tipoCor(t){
   if(TIPO_FIXO[k])return TIPO_FIXO[k];
   var h0=0;for(var i=0;i<k.length;i++)h0=(h0*31+k.charCodeAt(i))>>>0;
   return TIPO_PAL[h0%TIPO_PAL.length];
+}
+
+function waNum(t){
+  var d=String(t||'').replace(/[^0-9+]/g,'');
+  if(d.indexOf('+')===0)d=d.slice(1);else if(d.indexOf('00')===0)d=d.slice(2);
+  d=d.replace(/\D/g,'');
+  if(d.length===9)d='351'+d;
+  return d.length>=11?d:'';
+}
+function telEl(t){
+  var n=waNum(t);
+  if(!n)return document.createTextNode(String(t));
+  return h('a',{class:'s2-tel',href:'https://wa.me/'+n,target:'_blank',rel:'noopener',title:'Abrir o WhatsApp com '+t,onclick:function(e){e.stopPropagation()},onkeydown:function(e){e.stopPropagation()},text:String(t)});
 }
 
 /* ---------- ecrã principal ---------- */
@@ -1812,7 +1825,7 @@ function viewLista(body){
     var cor=ina?'#9ca3af':SIT_COR[x];
     var chipCls={'EM DIA':'ok','VENCIDO':'bad','A TERMINAR':'warn','ISENTO':'info'}[x]||'mute';
     var tc=tipoCor(s.tipo);
-    var subEl=h('div',{class:'s2-sub'},'Nº '+s.num,s.tipo?' · ':null,s.tipo?h('span',{class:'s2-tipo',style:{background:tc[0],color:tc[1]},text:s.tipo}):null,s.tel?' · '+s.tel:null);
+    var subEl=h('div',{class:'s2-sub'},'Nº '+s.num,s.tipo?' · ':null,s.tipo?h('span',{class:'s2-tipo',style:{background:tc[0],color:tc[1]},text:s.tipo}):null,s.tel?' · ':null,s.tel?telEl(s.tel):null);
     var online=String(s.obs||'').indexOf('Inscrição online')>=0&&!s.validade_quota;
     var btn=function(txt,title,fn,cls){return h('button',{class:'btn sm '+(cls||'line'),type:'button',title:title,'aria-label':title,text:txt,onclick:function(e){e.stopPropagation();fn()}})};
     var act=h('div',{class:'s2-act'});
@@ -1822,7 +1835,7 @@ function viewLista(body){
     var el=h('div',{class:'s2-item',role:'button',tabindex:'0',onclick:function(){editSocio(s.id)},onkeydown:function(e){if(e.key==='Enter'&&e.target===el)editSocio(s.id)}},
       h('div',{class:'s2-av',style:{background:cor},text:iniciais(s.nome)}),
       h('div',{class:'s2-main'},h('div',{class:'s2-name',style:{opacity:ina?.65:1},text:s.nome}),subEl,
-        (s.email?h('div',{class:'s2-sub s2-mail',title:s.email,text:'✉ '+s.email}):null),
+        (s.email?h('a',{class:'s2-sub s2-mail',href:'mailto:'+String(s.email).trim(),title:'Enviar email a '+s.email,onclick:function(e){e.stopPropagation()},onkeydown:function(e){e.stopPropagation()},text:'✉ '+s.email}):null),
         (online?h('div',{class:'s2-sub'},h('span',{class:'chip new',text:'Inscrição online'})):null)),
       h('div',{class:'s2-sit'},ina?A.chip(s.estado==='FALECEU'?'Falecido/a':'Inativo','mute'):A.chip(x==='ISENTO'?'Isento':x==='EM DIA'?'Em dia':x==='A TERMINAR'?'A terminar':'Vencido',chipCls),h('small',{text:ina?'':sitTexto(s)})),
       act);
