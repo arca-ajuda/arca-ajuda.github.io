@@ -801,7 +801,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.8.2|24/11/2026 18:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.8.3|24/11/2026 19:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 var SHORT={oficios:'Ofícios',atl:'ATL',salas:'Salas',inscricoes:'Inscrições',parceiros:'Benefícios',cartazes:'Cartazes'};
 function buildNav(){
   var n=$('#nav'); n.innerHTML='';
@@ -2256,10 +2256,10 @@ async function cfgDados(c){
     h('p',{class:'muted small',style:{marginBottom:'10px'},text:'Reconhece as colunas pelo cabeçalho (Nº, Nome, Tipo, NIF, Email, Telemóvel, Validade…). Só acrescenta sócios novos — nunca altera nem apaga os existentes.'}),
     h('button',{class:'btn line',text:'Escolher ficheiro…',onclick:function(){file.click()}}),file,msg));
   c.appendChild(h('div',{class:'card',style:{marginBottom:'14px'}},h('h3',{text:'⬇ Exportar'}),h('p',{class:'muted small',style:{marginBottom:'10px'},text:'O CSV contém dados pessoais (RGPD). Cada exportação fica registada.'}),h('button',{class:'btn line',text:'Exportar todos os sócios (CSV)',onclick:function(){var f=S.f;S.f={q:'',estado:'',sit:'',tipo:''};exportCSV();S.f=f}})));
-  var log=h('div',{class:'card'},h('h3',{text:'📋 Registo de atividade'}),h('p',{class:'muted small',style:{marginBottom:'10px'},text:'Últimos acessos e alterações a dados de sócios, por utilizador.'}));
+  var log=h('div',{class:'card'},h('h3',{text:'📋 Registo de atividade'}),h('p',{class:'muted small',style:{marginBottom:'10px'},text:'Últimos acessos e alterações a dados de sócios, por utilizador. Só mostra a atividade desta plataforma (Sócios).'}));
   var box=h('div');log.appendChild(box);c.appendChild(log);A.loading(box);
   try{
-    var rows=await A.api('/rest/v1/atividade?order=created_at.desc&limit=200');box.innerHTML='';
+    var all=await A.api('/rest/v1/atividade?order=created_at.desc&limit=2000');var rows=all.filter(function(r){return /^(editar|criar|eliminar|pagamento|exportar|importar|verificar|imprimir cartão|copiar link cartão|guardar cartão|estado:|mensagem:)/.test(String(r.tipo||''))}).slice(0,200);box.innerHTML='';
     box.appendChild(A.table([{t:'Quando',v:function(r){var d=new Date(r.created_at);return d.toLocaleDateString('pt-PT')+' '+d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}},{t:'Utilizador',cls:'hm',v:function(r){return r.utilizador}},{t:'Ação',v:function(r){return r.tipo}},{t:'Sócio',v:function(r){return r.socio_nome||''}},{t:'Detalhes',cls:'hm',v:function(r){return r.detalhes||''}}],rows,{empty:'Sem registos.'}));
   }catch(e){A.errBox(box,e)}
 }
