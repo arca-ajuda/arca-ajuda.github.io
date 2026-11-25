@@ -801,7 +801,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.6|25/11/2026 14:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.7|25/11/2026 15:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 var SHORT={oficios:'Ofícios',atl:'ATL',salas:'Salas',inscricoes:'Inscrições',parceiros:'Benefícios',cartazes:'Cartazes'};
 function buildNav(){
   var n=$('#nav'); n.innerHTML='';
@@ -1977,7 +1977,20 @@ function choose(title,opts){
   });
 }
 async function delSocio(s){
-  var ok=await A.confirm('Eliminar definitivamente o sócio nº '+s.num+' — '+s.nome+'?\n\nEsta ação não pode ser desfeita. Se apenas deixou de ser sócio, use "Inativo".',{danger:true,ok:'Eliminar',title:'Eliminar sócio'});
+  var ok=await new Promise(function(res){
+    var m,inp=h('input',{class:'input',type:'text',autocomplete:'off',autocapitalize:'characters',spellcheck:false,placeholder:'Escreva ARCA para confirmar','aria-label':'Escreva ARCA para confirmar',style:{marginTop:'10px'}});
+    var go=h('button',{class:'btn danger',type:'button',text:'Eliminar de vez',onclick:function(){if(!go.disabled)m.close(true)}});go.disabled=true;
+    var no=h('button',{class:'btn sec',type:'button',text:'Cancelar',onclick:function(){m.close(false)}});
+    inp.addEventListener('input',function(){go.disabled=inp.value.trim().toUpperCase()!=='ARCA'});
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!go.disabled)m.close(true)});
+    var bd=h('div',null,
+      h('p',{style:{fontWeight:'700',marginBottom:'8px'},text:'Quer eliminar mesmo o sócio nº '+s.num+' — '+s.nome+'?'}),
+      h('p',{text:'Vai perder os dados deste sócio de vez. Esta ação não pode ser desfeita.'}),
+      h('p',{class:'small muted',style:{marginTop:'6px'},text:'Se apenas deixou de ser sócio, use «Marcar como inativo».'}),
+      h('p',{style:{marginTop:'12px'},text:'É mesmo isso que quer fazer? Se sim, escreva ARCA na caixa abaixo.'}),inp,
+      h('div',{style:{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'14px'}},no,go));
+    m=A.modal({title:'⚠️ Eliminar sócio',body:bd,onClose:function(v){res(v===true)}});
+  });
   if(!ok)return;
   try{await A.remove('socios','id=eq.'+s.id);S.socios=S.socios.filter(function(x){return x!==s});A.log('eliminar',s.nome);A.toast('Sócio eliminado.','ok');refreshList()}
   catch(e){A.toast(e.message,'bad')}
