@@ -71,11 +71,8 @@ svg.li{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke
 .bar-user{display:flex;align-items:center;gap:6px;flex:0 0 auto;font-size:12px;color:var(--text-2)}
 #dock{position:fixed;right:14px;bottom:14px;z-index:70;padding:5px 6px 5px 2px;background:rgba(255,255,255,.97);border:1px solid #DCE3EB;border-radius:16px;box-shadow:0 8px 26px rgba(16,24,40,.2);max-width:calc(100vw - 12px)}
 body.out #dock{display:none!important}
-/* grupo do nome fixo (não flutua): linha própria por baixo do menu de cima, alinhada à direita com os botões */
-#dock,body.dock-row #dock,body.dock-rest #dock,body.dock-top #dock{position:static!important;z-index:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;visibility:visible!important;align-self:flex-end;flex:0 0 auto;margin:8px clamp(12px,2.4vw,30px) 0 auto;height:38px;box-sizing:border-box;padding:0 16px;border:1px solid #CBD5E1;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.06)!important;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 24px);font-size:13px;font-weight:600;color:#2B3A4D}
-#dock .grip,#dock .vtag{display:none!important}
-#dock #whoName{font-size:13px;font-weight:600;color:#2B3A4D;max-width:220px}
-body.dock-top #view .page-h{padding-right:0!important}
+/* v3.9.18: a caixa do nome (grupo flutuante) foi retirada: já não aparece em nenhuma área */
+#dock{display:none!important}
 #dock .vtag{font-size:10.5px;font-weight:700;color:var(--text-3,#64748b);background:#F1F5F9;border:1px solid #DCE3EB;border-radius:999px;padding:2px 7px;white-space:nowrap}
 .ver{margin-top:14px;text-align:center;font-size:11.5px;color:var(--text-3,#64748b)}
 #dock .grip{width:20px;height:34px;display:grid;place-items:center;color:#94A3B8;font-size:16px;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:8px}
@@ -810,7 +807,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.17|26/11/2026 01:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.18|26/11/2026 01:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -1756,7 +1753,8 @@ function render(){
       h('button',{class:'btn line',title:'Voltar a ler os dados',"aria-label":'Atualizar',onclick:function(){S.loaded=false;root.innerHTML='';render()},text:'↻ Atualizar'}),
       h('button',{class:'btn line',onclick:exportCSV,text:'⬇ CSV'}),
       h('button',{class:'btn line',title:'Copiar o link da ficha de inscrição para enviar a quem quer ser sócio',onclick:function(){copy(LINK_INSCRICAO,'Link da ficha de inscrição copiado: '+LINK_INSCRICAO)},text:'🔗 Link inscrição'}),
-      h('a',{class:'btn line',href:LINK_INSCRICAO,target:'_blank',rel:'noopener',text:'📝 Abrir ficha'})));
+      h('a',{class:'btn line',href:LINK_INSCRICAO,target:'_blank',rel:'noopener',text:'📝 Abrir ficha'}),
+      h('span',{class:'btn line s2-user',style:{pointerEvents:'none',cursor:'default'}},h('span',{class:'dot'}),(A.user&&(A.user.nome||A.user.email))||'')));
   var tabs=h('div',{class:'tabs'});
   TABS.forEach(function(t){tabs.appendChild(h('button',{class:'tab'+(t[0]===tab?' on':''),type:'button',text:t[1],onclick:function(){ctx.go(t[0])}}))});
   var body=h('div',{id:'soc-body'});
