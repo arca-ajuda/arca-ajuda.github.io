@@ -100,6 +100,7 @@ body.out #app>#bar{display:none}
 .card{background:rgb(255 255 255/var(--cA,1));border:1px solid var(--line);border-radius:var(--r);padding:16px}
 .card h3{font-size:15px;margin-bottom:10px}
 .page-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+body.dock-top #view .page-h{padding-right:var(--dockw,230px)}
 .page-h h1{font-family:Fraunces,Georgia,serif;font-size:clamp(22px,3vw,30px);color:var(--navy)}
 .page-h p{color:var(--text-2);margin-top:3px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -313,7 +314,7 @@ body.bar-auto #bar{background:#fff}
 <main id="view"></main>
 </div>
 <div id="dock" class="bar-user" role="toolbar" aria-label="Conta e ferramentas">
-  <span class="grip" id="dockGrip" tabindex="0" role="button" aria-label="Mover esta barra (arraste ou use as setas)" title="Arraste para mover · duplo clique para repor">⠿</span>
+  <span class="grip" id="dockGrip" tabindex="0" role="button" aria-label="Mover esta barra (arraste ou use as setas)" title="Arraste para mover · duplo clique: canto superior direito (e outra vez para voltar ao fundo)">⠿</span>
   <span class="dot"></span><span id="whoName"></span><span id="verTag" class="vtag"></span><small id="whoRole"></small>
 </div>
 <div id="login" hidden></div>
@@ -801,7 +802,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.11|25/11/2026 20:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.12|25/11/2026 21:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -851,8 +852,10 @@ function initDock(){
   var d=$('#dock'),g=$('#dockGrip'); if(!d||!g)return;
   var KEY='arca_dock_pos',M=6;
   function clamp(x,y){var w=d.offsetWidth,h=d.offsetHeight;return [Math.max(M,Math.min(innerWidth-w-M,x)),Math.max(M,Math.min(innerHeight-h-M,y))]}
-  function put(x,y){var c=clamp(x,y);d.style.left=c[0]+'px';d.style.top=c[1]+'px';d.style.right='auto';d.style.bottom='auto';document.body.classList.remove('dock-rest');return c}
-  function reset(){d.style.left=d.style.top=d.style.right=d.style.bottom='';document.body.classList.add('dock-rest');try{localStorage.removeItem(KEY)}catch(e){}}
+  function mark(){try{var r=d.getBoundingClientRect();var top=!document.body.classList.contains('dock-rest')&&r.top<150&&r.right>innerWidth*0.55;document.body.classList.toggle('dock-top',top);if(top)document.body.style.setProperty('--dockw',Math.round(d.offsetWidth+26)+'px')}catch(e){}}
+  function canto(){var b=$('#bar'),t=8;try{if(b&&b.offsetHeight&&getComputedStyle(b).position!=='absolute'&&getComputedStyle(b).position!=='fixed')t=Math.round(b.getBoundingClientRect().bottom+8)}catch(e){}put(innerWidth-d.offsetWidth-14,t);save()}
+  function put(x,y){var c=clamp(x,y);d.style.left=c[0]+'px';d.style.top=c[1]+'px';d.style.right='auto';d.style.bottom='auto';document.body.classList.remove('dock-rest');mark();return c}
+  function reset(){d.style.left=d.style.top=d.style.right=d.style.bottom='';document.body.classList.add('dock-rest');document.body.classList.remove('dock-top');try{localStorage.removeItem(KEY)}catch(e){}}
   function save(){try{localStorage.setItem(KEY,JSON.stringify([Math.round(d.offsetLeft),Math.round(d.offsetTop)]))}catch(e){}}
   document.body.classList.add('dock-rest');
   try{var p=JSON.parse(localStorage.getItem(KEY)||'null'); if(p&&p.length===2&&isFinite(p[0])&&isFinite(p[1]))put(p[0],p[1])}catch(e){}
@@ -861,7 +864,7 @@ function initDock(){
   g.addEventListener('pointermove',function(e){ if(!st||e.pointerId!==st.id)return; put(e.clientX-st.dx,e.clientY-st.dy) });
   function end(e){ if(!st)return; st=null; d.classList.remove('drag'); if(d.style.left)save() }
   g.addEventListener('pointerup',end); g.addEventListener('pointercancel',end);
-  g.addEventListener('dblclick',reset);
+  g.addEventListener('dblclick',function(){ if(d.style.left&&document.body.classList.contains('dock-top'))reset(); else canto() });
   g.addEventListener('keydown',function(e){ var k={ArrowLeft:[-24,0],ArrowRight:[24,0],ArrowUp:[0,-24],ArrowDown:[0,24]}[e.key]; if(e.key==='Home'||e.key==='Escape'){reset();return} if(!k)return; e.preventDefault(); var r=d.getBoundingClientRect(); put(r.left+k[0],r.top+k[1]); save() });
   function fit(){ if(d.style.left){var r=d.getBoundingClientRect(); put(r.left,r.top)} }
   window.addEventListener('resize',fit); A.dockFit=fit;
