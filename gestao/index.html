@@ -801,7 +801,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.4|24/11/2026 23:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.5|25/11/2026 13:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 var SHORT={oficios:'Ofícios',atl:'ATL',salas:'Salas',inscricoes:'Inscrições',parceiros:'Benefícios',cartazes:'Cartazes'};
 function buildNav(){
   var n=$('#nav'); n.innerHTML='';
@@ -1627,6 +1627,9 @@ function injectCSS(){
   '.s2-tipo{display:inline-block;font-weight:700;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;padding:1px 8px;border-radius:99px;vertical-align:1px}',
   'a.s2-mail{display:block;color:#1E6FAE;text-decoration:none;width:fit-content;max-width:100%}a.s2-mail:hover,a.s2-tel:hover{text-decoration:underline}a.s2-tel{color:#1E6FAE;text-decoration:none}',
   '.s2-sub{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
+  '.s2-obs{font-size:12px;line-height:1.35;color:#6B5420;background:#FFF6DC;border-radius:6px;padding:2px 8px;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;width:fit-content;max-width:100%;word-break:break-word}',
+  '.btn.s2-cardbtn{padding:0 10px;color:#1E6FAE;display:inline-flex;align-items:center;justify-content:center}.s2-cardbtn svg{width:21px;height:21px;display:block}',
+  '.s2-cm{display:flex;flex-direction:column;align-items:center;gap:14px}.s2-cm .cv{max-width:100%;overflow-x:auto;padding:6px 2px}.s2-cm .bt{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}',
   '.chip.new{background:var(--sky-l);color:var(--sky-d)}',
   '.s2-sit{text-align:right;flex:0 0 auto;min-width:130px}',
   '.s2-sit small{display:block;font-size:11.5px;color:var(--text-3);margin-top:3px}',
@@ -1773,7 +1776,7 @@ function viewLista(body){
     ['Isentos',cnt('ISENTO'),{estado:'ATIVO',sit:'ISENTO'}],['Inativos',all.filter(function(s){return s.estado==='INATIVO'}).length,{estado:'INATIVO'}]];
   PL.forEach(function(p){
     var on=(S.f.estado||'')===(p[2].estado||'')&&(S.f.sit||'')===(p[2].sit||'')&&!S.f.extra;
-    pills.appendChild(h('button',{class:'s2-pill'+(on?' on':''),type:'button',onclick:function(){S.f.estado=p[2].estado||'';S.f.sit=p[2].sit||'';S.f.extra='';viewLista(body)}},p[0]+' ',h('b',{text:String(p[1])})));
+    pills.appendChild(h('button',{class:'s2-pill'+(on?' on':''),type:'button',onclick:function(){S.f.estado=p[2].estado||'';S.f.sit=p[2].sit||'';S.f.extra='';if(p[0]==='Todos'){S.f.q='';S.f.n=0}viewLista(body)}},p[0]+' ',h('b',{text:String(p[1])})));
   });
   body.appendChild(pills);
 
@@ -1830,15 +1833,17 @@ function viewLista(body){
     var tc=tipoCor(s.tipo);
     var subEl=h('div',{class:'s2-sub'},'Nº '+s.num,s.tipo?' · ':null,s.tipo?h('span',{class:'s2-tipo',style:{background:tc[0],color:tc[1]},text:s.tipo}):null,s.tel?' · ':null,s.tel?telEl(s.tel):null);
     var online=String(s.obs||'').indexOf('Inscrição online')>=0&&!s.validade_quota;
+    var obsTxt=String(s.obs||'').replace(/[ \t\r\n]+/g,' ').trim();
     var btn=function(txt,title,fn,cls){return h('button',{class:'btn sm '+(cls||'line'),type:'button',title:title,'aria-label':title,text:txt,onclick:function(e){e.stopPropagation();fn()}})};
     var act=h('div',{class:'s2-act'});
     if(!ina&&x!=='ISENTO')act.appendChild(btn('💶 Pagamento','Registar pagamento da quota',function(){pagamento(s)},(x==='VENCIDO'||x==='A TERMINAR')?'':'line'));
-    act.appendChild(btn('🪪','Ver cartão do sócio',function(){ctx.go('cartao/'+s.id)}));
+    var cb=btn('','Ver cartão do sócio (imprimir, guardar imagem, copiar link)',function(){cartaoModal(s)},'line s2-cardbtn');cb.innerHTML=CARD_ICON;act.appendChild(cb);
     act.appendChild(btn('⋯','Mais ações',function(){menuSocio(s)}));
     var el=h('div',{class:'s2-item',role:'button',tabindex:'0',onclick:function(){editSocio(s.id)},onkeydown:function(e){if(e.key==='Enter'&&e.target===el)editSocio(s.id)}},
       h('div',{class:'s2-av',style:{background:cor},text:iniciais(s.nome)}),
       h('div',{class:'s2-main'},h('div',{class:'s2-name',style:{opacity:ina?.65:1},text:s.nome}),subEl,
         (s.email?h('a',{class:'s2-sub s2-mail',href:'mailto:'+String(s.email).trim(),title:'Enviar email a '+s.email,onclick:function(e){e.stopPropagation()},onkeydown:function(e){e.stopPropagation()},text:'✉ '+s.email}):null),
+        (obsTxt?h('div',{class:'s2-obs',title:obsTxt,text:'📝 '+obsTxt}):null),
         (online?h('div',{class:'s2-sub'},h('span',{class:'chip new',text:'Inscrição online'})):null)),
       h('div',{class:'s2-sit'},ina?A.chip(s.estado==='FALECEU'?'Falecido/a':'Inativo','mute'):A.chip(x==='ISENTO'?'Isento':x==='EM DIA'?'Em dia':x==='A TERMINAR'?'A terminar':'Vencido',chipCls),h('small',{text:ina?'':sitTexto(s)})),
       act);
@@ -1866,7 +1871,7 @@ function menuSocio(s){
   var l=h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}});
   l.appendChild(op('✏️ Editar ficha',function(){editSocio(s.id)}));
   if(!ina&&x!=='ISENTO')l.appendChild(op('💶 Registar pagamento da quota',function(){pagamento(s)}));
-  l.appendChild(op('🪪 Ver / imprimir cartão',function(){ctx.go('cartao/'+s.id)}));
+  l.appendChild(op('🪪 Ver / imprimir cartão',function(){cartaoModal(s)}));
   if(s.email&&s.aceita_email)l.appendChild(op('✉️ Enviar email',function(){menuMsg(s,'email')}));
   if(s.tel&&s.aceita_sms)l.appendChild(op('💬 Enviar SMS',function(){menuMsg(s,'sms')}));
   l.appendChild(op(s.estado==='ATIVO'?'⏸ Marcar como inativo':'▶ Reativar sócio',function(){toggleEstado(s)}));
@@ -2096,6 +2101,21 @@ function viewCartao(body,id){
     loadQR().then(function(){var b=card.querySelector('#qrbox');b.innerHTML='';new window.QRCode(b,{text:qrUrl(s),width:62,height:62,colorDark:'#12314F',colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.M})}).catch(function(){});
   }
   show();
+}
+var CARD_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.6"/><circle cx="8.4" cy="10.6" r="2.2"/><path d="M4.9 16.3c.6-1.6 2-2.4 3.5-2.4s2.9.8 3.5 2.4"/><path d="M14.6 9.8h4.2M14.6 13.2h2.8"/></svg>';
+function cartaoModal(s){
+  var card=cardEl(s,'qrmodal');
+  var sit=sitOf(s), val=s.validade_quota?A.date(s.validade_quota):'—';
+  var mm={ISENTO:['info','Isento de quota'],'EM DIA':['ok','✅ Quota em dia — válida até '+val],'A TERMINAR':['warn','⚠️ A terminar em '+val],VENCIDO:['bad','🔴 Quota vencida (validade: '+val+')']}[sit];
+  var wrap=h('div',{class:'s2-cm'},h('div',{class:'cv'},card));
+  if(mm&&!inativo(s))wrap.appendChild(h('div',{class:'chip '+mm[0],style:{display:'block',padding:'6px 12px',borderRadius:'10px',fontSize:'12.5px',textAlign:'center'},text:mm[1]}));
+  wrap.appendChild(h('div',{class:'bt'},
+    h('button',{class:'btn',type:'button',text:'🖨 Imprimir Cartão',onclick:function(){printCard(s)}}),
+    h('button',{class:'btn line',type:'button',text:'⬇ Guardar imagem',onclick:function(){pngCard(s)}}),
+    h('button',{class:'btn line',type:'button',text:'🔗 Copiar link',onclick:function(){A.log('copiar link cartão',s.nome);copy(qrUrl(s),'Link de verificação copiado.')}})));
+  wrap.appendChild(h('p',{class:'small muted',style:{textAlign:'center',margin:0},text:'Impressão em tamanho real (85,6 × 54 mm) para as saquetas NIF. Imprima a 100%.'}));
+  A.modal({title:'Cartão · Nº '+s.num+' — '+s.nome,body:wrap,noFocus:true});
+  loadQR().then(function(){var b=card.querySelector('#qrmodal');if(!b)return;b.innerHTML='';new window.QRCode(b,{text:qrUrl(s),width:62,height:62,colorDark:'#12314F',colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.M})}).catch(function(){});
 }
 function printCard(s){
   var w=window.open('','_blank','width=520,height=620'); if(!w){A.toast('O navegador bloqueou a janela de impressão.','bad');return}
