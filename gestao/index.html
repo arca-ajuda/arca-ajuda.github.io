@@ -70,7 +70,12 @@ body.out .fs-top{display:none}
 svg.li{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .bar-user{display:flex;align-items:center;gap:6px;flex:0 0 auto;font-size:12px;color:var(--text-2)}
 #dock{position:fixed;right:14px;bottom:14px;z-index:70;padding:5px 6px 5px 2px;background:rgba(255,255,255,.97);border:1px solid #DCE3EB;border-radius:16px;box-shadow:0 8px 26px rgba(16,24,40,.2);max-width:calc(100vw - 12px)}
-body.out #dock{display:none}
+body.out #dock{display:none!important}
+/* grupo do nome fixo (não flutua): linha própria por baixo do menu de cima, alinhada à direita com os botões */
+#dock,body.dock-row #dock,body.dock-rest #dock,body.dock-top #dock{position:static!important;z-index:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;visibility:visible!important;align-self:flex-end;flex:0 0 auto;margin:8px clamp(12px,2.4vw,30px) 0 auto;height:38px;box-sizing:border-box;padding:0 16px;border:1px solid #CBD5E1;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.06)!important;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 24px);font-size:13px;font-weight:600;color:#2B3A4D}
+#dock .grip,#dock .vtag{display:none!important}
+#dock #whoName{font-size:13px;font-weight:600;color:#2B3A4D;max-width:220px}
+body.dock-top #view .page-h{padding-right:0!important}
 #dock .vtag{font-size:10.5px;font-weight:700;color:var(--text-3,#64748b);background:#F1F5F9;border:1px solid #DCE3EB;border-radius:999px;padding:2px 7px;white-space:nowrap}
 .ver{margin-top:14px;text-align:center;font-size:11.5px;color:var(--text-3,#64748b)}
 #dock .grip{width:20px;height:34px;display:grid;place-items:center;color:#94A3B8;font-size:16px;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:8px}
@@ -314,11 +319,11 @@ body.bar-auto #bar{background:#fff}
   <button class="fs-top" id="fsBtn" type="button" title="Ecrã inteiro" aria-label="Ecrã inteiro" hidden><span class="ic"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span><span class="fl">Ampliar</span></button>
   <span id="topTitle" hidden></span>
 </header>
-<main id="view"></main>
-</div>
 <div id="dock" class="bar-user" role="toolbar" aria-label="Conta e ferramentas">
-  <span class="grip" id="dockGrip" tabindex="0" role="button" aria-label="Mover esta barra (arraste ou use as setas)" title="Arraste para mover · duplo clique: canto superior direito (e outra vez para voltar ao fundo)">⠿</span>
+  <span class="grip" id="dockGrip" tabindex="0" role="button" aria-label="Mover esta barra" title="">⠿</span>
   <span class="dot"></span><span id="whoName"></span><span id="verTag" class="vtag"></span><small id="whoRole"></small>
+</div>
+<main id="view"></main>
 </div>
 <div id="login" hidden></div>
 <div id="lock" hidden></div>
@@ -805,7 +810,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.16|26/11/2026 00:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.17|26/11/2026 01:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -852,6 +857,7 @@ function buildNav(){
 
 /* ---- grupo flutuante (nome, ecrã inteiro, Drive, Bloquear, Sair): móvel ---- */
 function initDock(){
+  return;
   var d=$('#dock'),g=$('#dockGrip'); if(!d||!g)return;
   var KEY='arca_dock_pos',M=6;
   function clamp(x,y){var w=d.offsetWidth,h=d.offsetHeight;return [Math.max(M,Math.min(innerWidth-w-M,x)),Math.max(M,Math.min(innerHeight-h-M,y))]}
