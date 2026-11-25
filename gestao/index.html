@@ -801,7 +801,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.2|24/11/2026 21:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.4|24/11/2026 23:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 var SHORT={oficios:'Ofícios',atl:'ATL',salas:'Salas',inscricoes:'Inscrições',parceiros:'Benefícios',cartazes:'Cartazes'};
 function buildNav(){
   var n=$('#nav'); n.innerHTML='';
@@ -1745,6 +1745,7 @@ function filtered(){
   if(o==='nome')out.sort(function(a,b){return A.norm(a.nome)<A.norm(b.nome)?-1:1});
   else if(o==='val')out.sort(function(a,b){var x=a.validade_quota||'9999',y=b.validade_quota||'9999';return x<y?-1:x>y?1:a.num-b.num});
   else if(o==='novos')out.sort(function(a,b){return b.num-a.num});
+  else if(o==='numdesc')out.sort(function(a,b){return b.num-a.num});
   else out.sort(function(a,b){return a.num-b.num});
   return out;
 }
@@ -1792,13 +1793,15 @@ function viewLista(body){
   tipoSel.appendChild(h('option',{value:'',text:'Todos os tipos'}));
   tiposNomes().forEach(function(o){tipoSel.appendChild(h('option',{value:o,text:o,selected:S.f.tipo===o}))});
   var ordSel=h('select',{class:'select','aria-label':'Ordenar',onchange:function(){S.f.ord=ordSel.value;S.f.n=0;drawList()}});
-  [['num','Ordenar: nº sócio'],['nome','Ordenar: nome A–Z'],['val','Ordenar: validade da quota'],['novos','Ordenar: mais recentes']].forEach(function(o){ordSel.appendChild(h('option',{value:o[0],text:o[1],selected:(S.f.ord||'num')===o[0]}))});
+  [['num','Ordenar: nº sócio (1 → último)'],['numdesc','Ordenar: nº sócio (último → 1)'],['nome','Ordenar: nome A–Z'],['val','Ordenar: validade da quota'],['novos','Ordenar: mais recentes']].forEach(function(o){ordSel.appendChild(h('option',{value:o[0],text:o[1],selected:(S.f.ord||'num')===o[0]}))});
   var cntEl=h('span',{class:'s2-count'});
   var bar=h('div',{class:'s2-bar'},h('div',{class:'s2-search'},q),tipoSel,ordSel,
     h('button',{class:'btn line sm',type:'button',onclick:function(){S.f={q:'',estado:'',sit:'',tipo:'',extra:'',ord:S.f.ord||'num',n:0};viewLista(body)},text:'Limpar filtros'}),
     h('button',{class:'btn line sm',type:'button',onclick:function(){resumo.hidden=!resumo.hidden;if(!resumo.hidden)drawResumo()},text:'📊 Contagem por tipo'}));
   body.appendChild(bar);
-  body.appendChild(h('div',{class:'s2-countrow'},cntEl));
+  var ordBtn=h('button',{class:'btn line sm',type:'button',style:{marginLeft:'10px'},onclick:function(){S.f.ord=(S.f.ord==='numdesc'||(S.f.ord&&S.f.ord!=='num'))?'num':'numdesc';ordSel.value=S.f.ord;S.f.n=0;drawList()}});
+  function upBtn(){var d=(S.f.ord||'num')==='num';ordBtn.textContent=d?'↓ Do último ao 1':'↑ Do 1 ao último';ordBtn.title=d?'Está do 1 ao último; carregar para ver do último ao 1':'Carregar para ver do 1 ao último';ordSel.value=S.f.ord||'num'}
+  body.appendChild(h('div',{class:'s2-countrow'},cntEl,ordBtn));
   var resumo=h('div',{class:'card',hidden:true,style:{marginBottom:'12px'}});body.appendChild(resumo);
   var lst=h('div');body.appendChild(lst);
 
@@ -1843,7 +1846,7 @@ function viewLista(body){
   }
   function drawList(){
     var rows=filtered(); var fl=S.f.q||S.f.estado||S.f.sit||S.f.tipo||S.f.extra;
-    cntEl.textContent=fl?rows.length+' de '+all.length+' sócios':all.length+' sócios';
+    cntEl.textContent=fl?rows.length+' de '+all.length+' sócios':all.length+' sócios';upBtn();
     lst.innerHTML='';
     if(!rows.length){lst.appendChild(h('div',{class:'s2-empty'},h('b',{text:'Nenhum sócio encontrado.'}),h('p',{class:'small muted',text:'Experimente outra pesquisa ou limpe os filtros.'})));if(!resumo.hidden)drawResumo();return}
     var max=(S.f.n||0)||80, box=h('div',{class:'s2-list'});
@@ -2088,6 +2091,7 @@ function viewCartao(body,id){
       h('button',{class:'btn',text:'🖨 Imprimir',onclick:function(){printCard(s)}}),
       h('button',{class:'btn line',text:'⬇ Guardar imagem',onclick:function(){pngCard(s)}}),
       h('button',{class:'btn line',text:'🔗 Copiar link',onclick:function(){A.log('copiar link cartão',s.nome);copy(qrUrl(s),'Link de verificação copiado.')}})));
+    info.appendChild(h('p',{class:'small muted',style:{marginTop:'10px'},text:'Impressão em tamanho real (85,6 × 54 mm): cabe nas saquetas NIF de 62 × 91 mm. Imprima a 100%, sem ajustar à página.'}));
     area.appendChild(card); area.appendChild(info);
     loadQR().then(function(){var b=card.querySelector('#qrbox');b.innerHTML='';new window.QRCode(b,{text:qrUrl(s),width:62,height:62,colorDark:'#12314F',colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.M})}).catch(function(){});
   }
@@ -2096,7 +2100,7 @@ function viewCartao(body,id){
 function printCard(s){
   var w=window.open('','_blank','width=520,height=620'); if(!w){A.toast('O navegador bloqueou a janela de impressão.','bad');return}
   var tmp=cardEl(s,'qr1'); tmp.style.boxShadow='none';
-  w.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Cartão de sócio</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px;font-family:Arial,sans-serif;background:#f5f5f5}@media print{.np{display:none}body{background:#fff}}</style></head><body><div class="np"><button onclick="window.print()" style="padding:9px 20px">🖨 Imprimir</button></div><div style="padding:16px;border:2px dashed #333;border-radius:16px;position:relative">'+tmp.outerHTML+'</div><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><script>window.onload=function(){new QRCode(document.getElementById("qr1"),{text:'+JSON.stringify(qrUrl(s))+',width:62,height:62,colorDark:"#12314F",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M})}<\/script></body></html>');
+  w.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Cartão de sócio</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px;font-family:Arial,sans-serif;background:#f5f5f5}@page{size:A4;margin:8mm}.cut{position:relative;width:85.6mm;height:54mm;margin:7mm}.cut .k{width:340px;height:214px;transform:scale(.9515);transform-origin:0 0}.cut i{position:absolute;background:#000}.nota{max-width:150mm;font-size:13px;color:#333;text-align:center;line-height:1.45}@media print{.np{display:none}body{background:#fff}}</style></head><body><div class="np"><button onclick="window.print()" style="padding:9px 20px">🖨 Imprimir</button></div><div class="np nota"><b>Tamanho real: 85,6 × 54 mm</b> — cabe nas saquetas NIF de 62 × 91 mm.<br>Imprima a 100% (“Tamanho real”, sem “ajustar à página”) e corte pelas marcas nos cantos.</div><div class="cut"><div class="k">'+tmp.outerHTML+'</div><i style="left:-3.5mm;top:-.1mm;width:2.5mm;height:.2mm"></i><i style="left:-.1mm;top:-3.5mm;width:.2mm;height:2.5mm"></i><i style="left:-3.5mm;bottom:-.1mm;width:2.5mm;height:.2mm"></i><i style="left:-.1mm;bottom:-3.5mm;width:.2mm;height:2.5mm"></i><i style="right:-3.5mm;top:-.1mm;width:2.5mm;height:.2mm"></i><i style="right:-.1mm;top:-3.5mm;width:.2mm;height:2.5mm"></i><i style="right:-3.5mm;bottom:-.1mm;width:2.5mm;height:.2mm"></i><i style="right:-.1mm;bottom:-3.5mm;width:.2mm;height:2.5mm"></i></div><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><script>window.onload=function(){new QRCode(document.getElementById("qr1"),{text:'+JSON.stringify(qrUrl(s))+',width:62,height:62,colorDark:"#12314F",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M})}<\/script></body></html>');
   w.document.close(); A.log('imprimir cartão',s.nome);
 }
 async function pngCard(s){
@@ -2262,6 +2266,10 @@ function cfgMsgs(c){
 
 /* importação */
 var SIN={num:['Nº SÓCIO','Nº','NUM','NUMERO'],nome:['NOME COMPLETO','NOME'],sexo:['SEXO'],nif:['NIF'],tipo:['TIPO SÓCIO','TIPO'],di:['DATA INSCRIÇÃO'],estado:['ESTADO SÓCIO','ESTADO'],tel:['TELEMÓVEL','TELEFONE'],morada:['MORADA'],cp:['C-POSTAL','CPOSTAL','C. POSTAL'],email:['E-MAIL','EMAIL'],quota:['VALOR QUOTAS','QUOTA'],obs:['OBSERVAÇÕES','OBS'],val:['TERMINA','VALIDADE'],dp:['DATA PAGAMENTO']};
+function normH(x){return String(x==null?'':x).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[º°ª\.]/g,'').replace(/\s+/g,' ').trim()}
+function numCol(head){var n=head.map(normH),ex=['N SOCIO','N','NUM','NUM SOCIO','NUMERO','NUMERO SOCIO','NUMERO DE SOCIO','N DE SOCIO','N ASSOCIADO','NUMERO DE ASSOCIADO','SOCIO N'];
+  for(var i=0;i<ex.length;i++){var j=n.indexOf(ex[i]);if(j>-1)return j}
+  return n.findIndex(function(x){return /^(N |NUM|NUMERO)/.test(x)&&x.indexOf('DIA')<0&&x.indexOf('QUOTA')<0&&x.indexOf('VALID')<0})}
 function colIdx(head,k){var n=head.map(function(x){return String(x==null?'':x).trim().toUpperCase()});for(var i=0;i<SIN[k].length;i++){var j=n.findIndex(function(x){return x.indexOf(SIN[k][i])>=0});if(j>-1)return j}return -1}
 function pData(v){
   if(v==null||v==='')return '';if(v instanceof Date)return isoLocal(v);
@@ -2275,17 +2283,22 @@ function parseCSV(txt){
 }
 async function importRows(rows,msg){
   if(!rows.length){msg.textContent='O ficheiro está vazio.';return}
-  var hi=0;for(var i=0;i<Math.min(rows.length,15);i++){if((rows[i]||[]).some(function(x){return String(x||'').toUpperCase().indexOf('NOME')>=0})){hi=i;break}}
-  var head=rows[hi],col={};Object.keys(SIN).forEach(function(k){col[k]=colIdx(head,k)});
+  var hi=0,best=-1;for(var i=0;i<Math.min(rows.length,30);i++){var r0=rows[i]||[];if(!r0.some(function(x){return String(x||'').toUpperCase().indexOf('NOME')>=0}))continue;var sc=Object.keys(SIN).filter(function(k){return k!=='num'&&colIdx(r0,k)>-1}).length+(numCol(r0)>-1?5:0);if(sc>best){best=sc;hi=i}}
+  var head=rows[hi],col={};Object.keys(SIN).forEach(function(k){col[k]=colIdx(head,k)});col.num=numCol(head);
   if(col.nome<0){msg.textContent='Não encontrei a coluna do Nome.';return}
+  if(col.num<0){msg.textContent='Não encontrei a coluna do Nº de sócio (cabeçalhos: '+head.filter(Boolean).slice(0,14).join(' | ')+'). Nada foi importado. Chame «Nº sócio» a essa coluna.';return}
   var data=rows.slice(hi+1).filter(function(l){return l&&l[col.nome]&&String(l[col.nome]).trim()});
   var g=function(l,k){return col[k]>-1?l[col[k]]:''};
+  var okNum=function(v){var n=Number(String(v==null?'':v).trim().replace(',','.'));return Number.isInteger(n)&&n>0&&n<100000?n:0};
+  var inv=data.filter(function(l){return !okNum(g(l,'num'))});
+  if(inv.length>Math.max(2,data.length*0.02)){msg.textContent='A coluna «'+head[col.num]+'» tem '+inv.length+' valores que não são números de sócio válidos (ex.: '+inv.slice(0,3).map(function(l){return String(g(l,'num'))}).join(', ')+'). Nada foi importado.';return}
+  var nn=function(x){return A.norm(String(x||'').replace(/\s+/g,' ').trim())};var existNome={},existNif={},dupNome=0;S.socios.forEach(function(s){existNome[nn(s.nome)]=1;if(s.nif)existNif[String(s.nif).replace(/\D/g,'')]=1});
   var exist={};S.socios.forEach(function(s){exist[s.num]=1});var auto=nextNum(),ok=0,dup=0,bad=0,novos=[];
-  var ok2=await A.confirm('Importar '+data.length+' linha(s)? Sócios cujo nº já existe são ignorados (nunca se sobrepõem dados existentes).',{ok:'Importar',title:'Confirmar importação'});
+  var ok2=await A.confirm('Importar '+data.length+' linha(s)? O Nº de sócio é lido da coluna «'+head[col.num]+'» (ex.: '+data.slice(0,3).map(function(l){return String(g(l,'num'))}).join(', ')+'). Sócios cujo nº já existe, ou com o mesmo nome de um sócio que já estava na lista, são ignorados (nunca se sobrepõem dados existentes).',{ok:'Importar',title:'Confirmar importação'});
   if(!ok2){msg.textContent='Importação cancelada.';return}
   for(var j=0;j<data.length;j++){
     var l=data[j],nome=String(g(l,'nome')).trim();if(!nome){bad++;continue}
-    var n=parseInt(g(l,'num'));if(!n||isNaN(n))n=auto;auto=Math.max(auto,n+1);if(exist[n]){dup++;continue}
+    var n=okNum(g(l,'num'));if(!n){bad++;continue}if(exist[n]){dup++;continue}if(existNome[nn(nome)]){dupNome++;continue}
     var tipo=(String(g(l,'tipo')||'EFETIVO').trim().toUpperCase())||'EFETIVO';var est=String(g(l,'estado')||'ATIVO').trim().toUpperCase();if(ESTADOS.indexOf(est)<0)est='ATIVO';
     var val=pData(g(l,'val')),sit=tipoIsento(tipo)?'ISENTO':(val?sitOf({validade_quota:val,tipo:tipo,num:n}):'VENCIDO');
     var cell=function(k){var v=g(l,k);return typeof v==='number'?String(Math.round(v)):String(v==null?'':v).trim()};
@@ -2295,8 +2308,8 @@ async function importRows(rows,msg){
   }
   for(var k=0;k<novos.length;k++){try{var tr=await A.insert('socios_tipos',{nome:novos[k],ordem:S.tipos.length,isento:false});S.tipos.push(tr[0])}catch(e){}}
   S.socios.sort(function(a,b){return a.num-b.num});
-  A.log('importar','',ok+' sócios importados ('+dup+' já existiam, '+bad+' falharam)');
-  msg.textContent='✓ '+ok+' importado(s)'+(dup?' · '+dup+' já existiam (ignorados)':'')+(bad?' · ⚠ '+bad+' falharam':'');
+  A.log('importar','',ok+' sócios importados ('+dup+' com nº já existente, '+dupNome+' com nome já existente, '+bad+' falharam)');
+  msg.textContent='✓ '+ok+' importado(s)'+(dup?' · '+dup+' com nº já existente (ignorados)':'')+(dupNome?' · '+dupNome+' com nome já existente (ignorados)':'')+(bad?' · ⚠ '+bad+' falharam':'');
 }
 async function cfgDados(c){
   c.innerHTML='';
