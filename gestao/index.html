@@ -817,7 +817,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.25|26/11/2026 11:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.26|26/11/2026 12:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -849,7 +849,7 @@ var VER='3.9.25|26/11/2026 11:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull=
 /* v3.9.20: depois de uma atualização, quem estiver na app vê qual é a versão e o que mudou (uma vez por aparelho) */
 (function(){
   var K='arca_ver_vista', cur=VER[0];
-  var NOTA='Os Cartazes passam a abrir com a mesma sessão da Gestão: já não pedem outra palavra-passe. Se não abrir sozinho, mostra o ecrã de entrada antigo como reserva.';
+  var NOTA='Acessos: ao criar ou editar uma conta (Definições → Acessos) já se escolhe se pode usar as Faturas. Já não é preciso pedir a ninguém.';
   var vista=null; try{vista=localStorage.getItem(K)}catch(e){}
   if(vista===cur)return;
   function mostra(){
@@ -1593,7 +1593,7 @@ function paneAcessos(el){
     var cols=[
       {t:'Conta',v:function(c){return h('div',null,h('b',{text:c.nome||c.email}),h('div',{class:'muted small',text:c.email}))}},
       {t:'Nível',v:function(c){var n=c.acesso||'normal';return A.chip(NIVEIS[n].replace(' (como antes)',''),n==='total'?'ok':n==='limitado'?'warn':'mute')}},
-      {t:'Aplicações',v:function(c){return c.acesso==='limitado'?(c.apps||[]).map(function(a){return APPNAME[a]||a}).join(', ')||'—':'Todas'}},
+      {t:'Aplicações',v:function(c){var ap=c.acesso==='limitado'?((c.apps||[]).map(function(a){return APPNAME[a]||a}).join(', ')||'—'):'Todas'; return ap+(c.faturas?(c.acesso==='limitado'?', Faturas':''):' · sem Faturas')}},
       {t:'Só leitura',v:function(c){return c.so_leitura?'Sim':'—'}},
       {t:'Estado',v:function(c){return !c.ativo?A.chip('Desativada','bad'):(!c.confirmado?A.chip('Convite pendente','warn'):h('span',null,A.chip('Ativa','ok'),c.ultimo_acesso?h('div',{class:'muted small',text:'último acesso '+A.date(c.ultimo_acesso)}):null))}},
       {t:'',v:function(c){
@@ -1617,13 +1617,15 @@ function paneAcessos(el){
     op.forEach(function(o){sel.appendChild(h('option',{value:o[0],text:o[1]}))}); sel.value=nivelNovo||(c&&(c.acesso||'normal'))||'limitado';
     var grid=h('div',{class:'set-apps'}), cbs={};
     APPS.forEach(function(a){var cb=h('input',{type:'checkbox'}); cb.checked=!!(c&&c.apps&&c.apps.indexOf(a[0])>=0); cbs[a[0]]=cb; grid.appendChild(h('label',{class:'chk'},cb,h('span',{text:a[1]})))});
-    grid.appendChild(h('label',{class:'chk dis',title:'A área Faturas tem uma lista de acessos própria, dentro da própria aplicação.'},h('input',{type:'checkbox',disabled:true}),h('span',{text:'Faturas (gerido na própria área Faturas)'})));
+    var fat=h('input',{type:'checkbox'}); fat.checked=c?!!c.faturas:(sel.value==='total'||sel.value==='completo'); fat.onchange=function(){fat._t=1};
+    var fatBox=h('label',{class:'chk',title:'A área Faturas tem uma lista de acessos própria; agora é gerida aqui.'},fat,h('span',{text:'Pode usar as Faturas (registo e consulta das faturas)'}));
     var ro=h('input',{type:'checkbox'}); ro.checked=!!(c&&c.so_leitura);
     var at=h('input',{type:'checkbox'}); at.checked=c?!!c.ativo:true;
     var appsBox=h('div',null,h('div',{class:'apr-sec',text:'Aplicações que esta conta pode ver'}),grid);
     var roBox=h('label',{class:'chk'},ro,h('span',{text:'Só leitura: pode consultar mas não pode criar, alterar nem apagar nada.'}));
     var note=h('div',{class:'muted small'});
     function upd(){
+      if(novo&&!fat._t)fat.checked=(sel.value==='total'||sel.value==='completo');
       appsBox.style.display=sel.value==='limitado'?'':'none';
       roBox.style.display=(sel.value==='total')?'none':'';
       note.textContent=sel.value==='total'?'Acesso total: tudo, incluindo gerir estes acessos. Use o email de quem manda mesmo (e que consulte com regularidade).':sel.value==='limitado'?'Limitado: só vê as aplicações marcadas; não vê o registo de atividade nem as contas dos outros.':sel.value==='completo'?'Completo: vê e edita todas as áreas, mas não gere acessos.':'Normal: fica como estava, sem restrições novas.';
@@ -1632,14 +1634,15 @@ function paneAcessos(el){
     sel.onchange=upd; upd();
     var body=h('div',null,
       novo?h('div',{class:'muted small',text:'Escreva o email. A pessoa recebe um convite, abre a ligação e escolhe a palavra-passe dela.'}):null,
-      A.field('Email',em),A.field('Nome',nm),A.field('Nível de acesso',sel),note,appsBox,roBox,
+      A.field('Email',em),A.field('Nome',nm),A.field('Nível de acesso',sel),note,appsBox,fatBox,roBox,
       h('label',{class:'chk'},at,h('span',{text:'Conta ativa (desmarcar bloqueia o acesso, sem apagar nada).'})));
     A.modal({title:novo?'Novo acesso':'Editar acesso',wide:true,body:body,actions:[
       {text:'Cancelar',cls:'sec',value:false},
       {text:novo?'Enviar convite':'Guardar',cls:'go',close:false,onClick:async function(api){
         var apps=APPS.map(function(a){return a[0]}).filter(function(k){return cbs[k].checked});
-        var r=await fn({acao:'guardar',email:em.value,nome:nm.value,nivel:sel.value,apps:apps,so_leitura:ro.checked,ativo:at.checked});
+        var r=await fn({acao:'guardar',email:em.value,nome:nm.value,nivel:sel.value,apps:apps,so_leitura:ro.checked,ativo:at.checked,faturas:fat.checked});
         A.toast(r.criado?'Convite enviado a '+em.value.trim()+'.':'Acesso guardado.','ok');
+        if(r.faturas&&/^erro/.test(r.faturas))A.toast('Atenção: o acesso às Faturas não ficou atualizado ('+r.faturas+').','bad');
         api.close(); A.loading(box,'A atualizar…'); load(); return false;
       }}]});
   }
