@@ -817,7 +817,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.27|26/11/2026 13:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.28|26/11/2026 14:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -1441,10 +1441,57 @@ function panel(first){
     else line('⚪ Google Drive ainda não configurado.');
     if(D.account&&D.email&&D.account!==D.email)line('⚠️ A conta ligada ('+D.account+') é diferente da configurada ('+D.email+'). Use “Mudar de conta”.');
   }};
+  /* cópia automática no servidor (noturna) */
+  var srv=A.h('div',{class:'small',style:{marginTop:'12px',padding:'10px 12px',border:'1px solid rgba(120,130,150,.35)',borderRadius:'10px',lineHeight:'1.55'}});
+  function srvFn(body){
+    return A.freshToken().then(function(tk){
+      return fetch(A.cfg.SUPA+'/functions/v1/drive-copia',{method:'POST',headers:{'Content-Type':'application/json',apikey:A.cfg.KEY,Authorization:'Bearer '+tk},body:JSON.stringify(body)});
+    }).then(function(r){
+      return r.json().catch(function(){return {}}).then(function(d){
+        if(!r.ok||d.erro)throw new Error(d.erro||('Erro '+r.status+' ao contactar o servidor.'));
+        return d;
+      });
+    });
+  }
+  function srvQuando(t){return t?new Date(t).toLocaleString('pt-PT'):''}
+  function srvRender(){
+    srv.innerHTML='';
+    srv.appendChild(A.h('div',{style:{fontWeight:'700'},text:'☁ Cópia automática no servidor (todas as noites)'}));
+    var linha=A.h('div',{class:'muted',text:'A verificar…'}); srv.appendChild(linha);
+    var bt=A.h('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'8px'}}); srv.appendChild(bt);
+    srvFn({acao:'estado'}).then(function(s){
+      bt.innerHTML='';
+      if(!s.servidor_pronto){ linha.textContent='⚪ Ainda por ativar: falta configurar a chave da Google no servidor. Fale com quem gere a apk.'; return; }
+      if(!s.ligado){
+        linha.textContent='⚪ Desligada. Ligue uma única vez e passa a guardar sozinha, todas as noites, as Faturas e o Financeiro na Drive da associação, mesmo sem ninguém ter a app aberta.';
+        bt.appendChild(A.h('button',{class:'btn',type:'button',text:'Ligar cópia automática',onclick:srvLigar}));
+        return;
+      }
+      var falhou=s.ultimo_erro&&(!s.ultimo_ok||new Date(s.ultimo_erro_em)>new Date(s.ultimo_ok));
+      linha.textContent=falhou?('🔴 Ligada ('+(s.conta||'?')+'), mas a última tentativa falhou ('+srvQuando(s.ultimo_erro_em)+'): '+s.ultimo_erro)
+        :('🟢 Ligada ('+(s.conta||'?')+')'+(s.ultimo_ok?' · última cópia: '+srvQuando(s.ultimo_ok)+(s.ultimo_resumo?' — '+s.ultimo_resumo:''):' · ainda sem cópia (a primeira é esta noite, ou carregue em “Guardar agora no servidor”).'));
+      bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Guardar agora no servidor',onclick:srvAgora}));
+      if(falhou)bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Ligar outra vez',onclick:srvLigar}));
+      bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Desligar',onclick:srvDesligar}));
+    }).catch(function(e){ linha.textContent='⚠️ Não foi possível ver o estado: '+e.message; });
+  }
+  function srvLigar(){
+    loadGsi().then(function(){
+      var c=google.accounts.oauth2.initCodeClient({client_id:CLIENT,scope:SCOPE,ux_mode:'popup',login_hint:D.email||undefined,
+        callback:function(resp){
+          if(!resp||resp.error||!resp.code){ A.toast('A ligação à Google foi cancelada.','bad'); return }
+          srvFn({acao:'ligar',code:resp.code}).then(function(d){ A.toast('Cópia automática ligada ('+(d.conta||'')+') ✓'); A.log('drive','','Cópia automática no servidor ligada'); srvRender(); },function(e){ A.toast(e.message,'bad') });
+        },
+        error_callback:function(){ A.toast('A ligação à Google foi cancelada.','bad') }});
+      c.requestCode();
+    }).catch(function(e){ A.toast(e.message,'bad') });
+  }
+  function srvAgora(){ A.toast('A guardar no servidor…'); srvFn({acao:'executar'}).then(function(d){ A.toast('Guardado ✓ '+(d.resumo||'')); srvRender() },function(e){ A.toast(e.message,'bad'); srvRender() }) }
+  function srvDesligar(){ if(!confirm('Desligar a cópia automática no servidor? As cópias já feitas ficam na Drive.'))return; srvFn({acao:'desligar'}).then(function(){ A.toast('Cópia automática desligada.'); srvRender() },function(e){ A.toast(e.message,'bad') }) }
   var info=A.h('div',null,
     A.h('p',{text:(first?'Para a cópia de segurança automática, indique o email da conta Google da associação e ligue o Drive. ':'')+'O email fica guardado nas Configurações. Em cada sessão basta um clique no botão “Drive” para ligar (a janela da Google só abre quando carregar nesse botão).',style:{marginBottom:'10px'}}),
     A.h('p',{class:'muted small',text:'O que é guardado automaticamente: Excel das Faturas (por ano) e cópia do Financeiro (JSON + Excel dos movimentos), nas pastas “ARCA Faturas (cópia automática)” e “ARCA Financeiro (cópia automática)”. Não leva dados de sócios nem PINs.',style:{marginBottom:'10px'}}),
-    A.field('Conta Google da Drive',email),status,
+    A.field('Conta Google da Drive',email),status,srv,
     A.h('details',{class:'small',style:{marginTop:'10px'}},A.h('summary',{text:'Aparece erro “origem não autorizada” (origin_mismatch)?'}),
       A.h('p',{class:'muted',style:{marginTop:'6px'},text:'É preciso autorizar o endereço desta app no Google Cloud (uma única vez): console.cloud.google.com → APIs e serviços → Credenciais → o cliente OAuth usado pelas apps ARCA → “Origens JavaScript autorizadas” → adicionar '+location.origin+' → Guardar. Pode demorar alguns minutos.'})));
   var ok=async function(pick){
@@ -1462,7 +1509,7 @@ function panel(first){
       {text:'Guardar cópia agora',cls:'sec',close:false,onClick:async function(){await backup(true);return false}},
       {text:'Fechar',cls:'sec',value:true}
     ]});
-  P.api=api; D.panel=P; P.refresh();
+  P.api=api; D.panel=P; P.refresh(); srvRender();
   /* quando o email é guardado pela 1.ª vez, passa a ligar-se sozinha nas próximas aberturas */
   var _s=saveEmail;
 }
