@@ -817,7 +817,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.29|27/11/2026 11:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.30|27/11/2026 12:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -1210,7 +1210,7 @@ function srvRefresh(){
   if(!allowed())return;
   A.freshToken().then(function(tk){
     return fetch(A.cfg.SUPA+'/functions/v1/drive-copia',{method:'POST',headers:{'Content-Type':'application/json',apikey:A.cfg.KEY,Authorization:'Bearer '+tk},body:JSON.stringify({acao:'estado'})});
-  }).then(function(r){return r.ok?r.json():null}).then(function(q){ if(q&&typeof q==='object'&&!q.erro){ D.srvS=q; emit() } }).catch(function(){});
+  }).then(function(r){return r.ok?r.json():null}).then(function(q){ if(q&&typeof q==='object'&&!q.erro){ D.srvS=q; try{ if(srvOn())localStorage.setItem('arca_srv_on',JSON.stringify({conta:q.conta,ultimo_ok:q.ultimo_ok})); else localStorage.removeItem('arca_srv_on') }catch(e){} emit() } }).catch(function(){});
 }
 
 /* pede ao servidor uma cópia quando há alterações (o servidor compara e só grava se algo mudou) */
@@ -1300,6 +1300,7 @@ async function start(){
   D.started=true;
   try{var raw=sessionStorage.getItem(TK); if(raw){var o=JSON.parse(raw); if(o&&o.t&&Date.now()<o.e){D.tok=o.t;D.exp=o.e}}}catch(e){}
   try{var l=sessionStorage.getItem(TK+'_last'); if(l)D.last=l}catch(e){}
+  try{ var so=JSON.parse(localStorage.getItem('arca_srv_on')||'null'); if(so&&!D.srvS)D.srvS={servidor_pronto:true,ligado:true,conta:so.conta,ultimo_ok:so.ultimo_ok} }catch(e){}
   await loadCfg(); paintBar(); srvRefresh(); if(!D.srvT)D.srvT=setInterval(srvRefresh,10*60*1000);
   if(!D.email){ if(!D.asked){D.asked=true; setTimeout(function(){if(allowed())panel(true)},900)} return }
   arm();
@@ -1503,6 +1504,8 @@ function panel(first){
       linha.textContent=falhou?('🔴 Ligada ('+(s.conta||'?')+'), mas a última tentativa falhou ('+srvQuando(s.ultimo_erro_em)+'): '+s.ultimo_erro)
         :('🟢 Ligada ('+(s.conta||'?')+')'+(s.ultimo_ok?' · última cópia: '+srvQuando(s.ultimo_ok)+(s.ultimo_resumo?' — '+s.ultimo_resumo:''):' · ainda sem cópia (a primeira é esta noite, ou carregue em “Guardar agora no servidor”).'));
       bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Guardar agora no servidor',onclick:srvAgora}));
+      bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'📁 Abrir pasta das Faturas',onclick:function(){srvPasta('faturas')}}));
+      bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'📁 Abrir pasta do Financeiro',onclick:function(){srvPasta('financeiro')}}));
       if(falhou)bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Ligar outra vez',onclick:srvLigar}));
       bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Desligar',onclick:srvDesligar}));
     }).catch(function(e){ linha.textContent='⚠️ Não foi possível ver o estado: '+e.message; });
@@ -1517,6 +1520,14 @@ function panel(first){
         error_callback:function(){ A.toast('A ligação à Google foi cancelada.','bad') }});
       c.requestCode();
     }).catch(function(e){ A.toast(e.message,'bad') });
+  }
+  function srvPasta(qual){
+    var w=window.open('','_blank');   /* abre já (antes da resposta) para o browser não bloquear */
+    srvFn({acao:'pastas'}).then(function(d){
+      var u=d&&d[qual];
+      if(u){ if(w)w.location.href=u; else window.open(u,'_blank') }
+      else { if(w)w.close(); A.toast('A pasta ainda não existe na Drive: carregue em “Guardar agora no servidor”.','bad') }
+    },function(e){ if(w)w.close(); A.toast(e.message,'bad') });
   }
   function srvAgora(){ A.toast('A guardar no servidor…'); srvFn({acao:'executar'}).then(function(d){ A.toast('Guardado ✓ '+(d.resumo||'')); srvRender() },function(e){ A.toast(e.message,'bad'); srvRender() }) }
   function srvDesligar(){ if(!confirm('Desligar a cópia automática no servidor? As cópias já feitas ficam na Drive.'))return; srvFn({acao:'desligar'}).then(function(){ A.toast('Cópia automática desligada.'); srvRender() },function(e){ A.toast(e.message,'bad') }) }
