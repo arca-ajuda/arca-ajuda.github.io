@@ -817,7 +817,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.30|27/11/2026 12:00'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.31|27/11/2026 12:45'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -1161,6 +1161,7 @@ function state(){
   if(srvFail())return 'srverr';
   if(srvOn()&&!valid())return 'auto';
   if(!D.email)return 'noemail';
+  if(D.srvS&&D.srvS.servidor_pronto&&!D.srvS.ligado&&!valid())return 'srvoff';
   if(valid())return D.busy?'busy':(D.err?'error':'on');
   return D.err?'error':'needs';
 }
@@ -1185,6 +1186,7 @@ function paintBar(){
     needs:['#f59e0b','Drive: ligar','Google Drive: falta ligar. Clique aqui para ligar (só abre a janela da Google quando clicar neste botão).'],
     on:['#22c55e','Drive ✓','Google Drive ligado'+(D.account?' ('+D.account+')':'')+(D.last?' · última cópia '+new Date(D.last).toLocaleString('pt-PT'):'')],
     auto:['#22c55e','Drive ✓ auto','Cópia automática no servidor ligada ('+(D.srvS&&D.srvS.conta||'')+'): guarda sozinha todas as noites, mesmo sem ninguém na app.'+(D.srvS&&D.srvS.ultimo_ok?' Última cópia: '+new Date(D.srvS.ultimo_ok).toLocaleString('pt-PT'):'')],
+    srvoff:['#ef4444','Drive: desligada','A cópia automática no servidor está desligada. Clique para a ligar (só é preciso uma vez).'],
     srverr:['#ef4444','Drive: erro servidor','A cópia automática no servidor falhou: '+(D.srvS&&D.srvS.ultimo_erro||'erro')+'. Clique para ver e ligar outra vez.'],
     busy:['#f59e0b','Drive…','A guardar a cópia no Google Drive…'],
     error:['#ef4444','Drive: erro',D.err||'Erro no Google Drive. Clique para ver.']}[s]||['#9aa4b2','Drive',''];
@@ -1196,7 +1198,7 @@ function mountBar(){
   var lock=$('#lockBtn'); if(!lock)return;
   var b=A.h('button',{class:'btn sec sm',id:'driveBtn',type:'button',hidden:true,onclick:function(){
     /* já tem o email configurado e falta só ligar: um clique no botão liga (abre a janela da Google só agora) */
-    if(D.email&&!valid()&&!D.waiter&&state()!=='noemail'&&state()!=='auto'&&state()!=='srverr'){ request(false).then(function(){A.toast('Google Drive ligado ✓');backup(true)},function(e){D.err=e.message;emit();A.toast(e.message,'bad');panel()}) }
+    if(D.email&&!valid()&&!D.waiter&&state()!=='noemail'&&state()!=='auto'&&state()!=='srverr'&&state()!=='srvoff'){ request(false).then(function(){A.toast('Google Drive ligado ✓');backup(true)},function(e){D.err=e.message;emit();A.toast(e.message,'bad');panel()}) }
     else panel()
   }},
     A.h('span',{class:'dd'}),A.h('span',{class:'dl lbl',text:'Drive'}));
@@ -1210,7 +1212,7 @@ function srvRefresh(){
   if(!allowed())return;
   A.freshToken().then(function(tk){
     return fetch(A.cfg.SUPA+'/functions/v1/drive-copia',{method:'POST',headers:{'Content-Type':'application/json',apikey:A.cfg.KEY,Authorization:'Bearer '+tk},body:JSON.stringify({acao:'estado'})});
-  }).then(function(r){return r.ok?r.json():null}).then(function(q){ if(q&&typeof q==='object'&&!q.erro){ D.srvS=q; try{ if(srvOn())localStorage.setItem('arca_srv_on',JSON.stringify({conta:q.conta,ultimo_ok:q.ultimo_ok})); else localStorage.removeItem('arca_srv_on') }catch(e){} emit() } }).catch(function(){});
+  }).then(function(r){return r.ok?r.json():null}).then(function(q){ if(q&&typeof q==='object'&&!q.erro){ D.srvS=q; try{ localStorage.setItem('arca_srv_on',JSON.stringify({servidor_pronto:q.servidor_pronto,ligado:q.ligado,conta:q.conta,ultimo_ok:q.ultimo_ok,ultimo_erro:q.ultimo_erro,ultimo_erro_em:q.ultimo_erro_em})) }catch(e){} emit() } }).catch(function(){});
 }
 
 /* pede ao servidor uma cópia quando há alterações (o servidor compara e só grava se algo mudou) */
@@ -1300,7 +1302,7 @@ async function start(){
   D.started=true;
   try{var raw=sessionStorage.getItem(TK); if(raw){var o=JSON.parse(raw); if(o&&o.t&&Date.now()<o.e){D.tok=o.t;D.exp=o.e}}}catch(e){}
   try{var l=sessionStorage.getItem(TK+'_last'); if(l)D.last=l}catch(e){}
-  try{ var so=JSON.parse(localStorage.getItem('arca_srv_on')||'null'); if(so&&!D.srvS)D.srvS={servidor_pronto:true,ligado:true,conta:so.conta,ultimo_ok:so.ultimo_ok} }catch(e){}
+  try{ var so=JSON.parse(localStorage.getItem('arca_srv_on')||'null'); if(so&&typeof so==='object'&&!D.srvS)D.srvS=so }catch(e){}
   await loadCfg(); paintBar(); srvRefresh(); if(!D.srvT)D.srvT=setInterval(srvRefresh,10*60*1000);
   if(!D.email){ if(!D.asked){D.asked=true; setTimeout(function(){if(allowed())panel(true)},900)} return }
   arm();
@@ -1468,6 +1470,7 @@ function panel(first){
     var line=function(t){status.appendChild(A.h('div',{text:t}))};
     if(s==='on'||s==='busy')line('🟢 Ligado ao Google Drive'+(D.account?' ('+D.account+')':'')+(ul?' · última cópia: '+ul:' · ainda sem cópia nesta sessão')+(s==='busy'?' · a guardar…':''));
     else if(s==='auto')line('🟢 Cópia automática no servidor ligada'+(D.srvS&&D.srvS.conta?' ('+D.srvS.conta+')':'')+(D.srvS&&D.srvS.ultimo_ok?' · última cópia: '+new Date(D.srvS.ultimo_ok).toLocaleString('pt-PT'):'')+'. Não é preciso ligar o Drive neste computador.');
+    else if(s==='srvoff')line('🔴 A cópia automática no servidor está desligada. Carregue em “Ligar cópia automática” na caixa abaixo (só é preciso uma vez).');
     else if(s==='srverr')line('🔴 A cópia automática no servidor falhou: '+(D.srvS&&D.srvS.ultimo_erro||'erro')+'. Carregue em “Ligar outra vez” na caixa abaixo.');
     else if(s==='needs')line('🟠 Conta configurada ('+D.email+'), mas a ligação precisa de um clique: carregue em “Ligar Google Drive”.');
     else if(s==='error')line('🔴 '+(D.err||'Erro no Google Drive.'));
@@ -1506,6 +1509,7 @@ function panel(first){
       bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Guardar agora no servidor',onclick:srvAgora}));
       bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'📁 Abrir pasta das Faturas',onclick:function(){srvPasta('faturas')}}));
       bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'📁 Abrir pasta do Financeiro',onclick:function(){srvPasta('financeiro')}}));
+      bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'🔎 Verificar duplicados',onclick:srvVerificar}));
       if(falhou)bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Ligar outra vez',onclick:srvLigar}));
       bt.appendChild(A.h('button',{class:'btn line',type:'button',text:'Desligar',onclick:srvDesligar}));
     }).catch(function(e){ linha.textContent='⚠️ Não foi possível ver o estado: '+e.message; });
@@ -1520,6 +1524,18 @@ function panel(first){
         error_callback:function(){ A.toast('A ligação à Google foi cancelada.','bad') }});
       c.requestCode();
     }).catch(function(e){ A.toast(e.message,'bad') });
+  }
+  function srvVerificar(){
+    A.toast('A verificar a Drive…');
+    srvFn({acao:'verificar'}).then(function(d){
+      var L=[], lista=d.lista||[], fich=lista.filter(function(x){return x.pasta_tipo==='ficheiro'}), pastas=lista.length-fich.length;
+      L.push('Na Drive da cópia automática: '+fich.length+' ficheiros em '+pastas+' pastas.');
+      if(!(d.duplicados||[]).length)L.push('','✅ Não há ficheiros nem pastas repetidos (mesmo nome na mesma pasta).');
+      else { L.push('','⚠️ Repetidos:'); d.duplicados.forEach(function(x){L.push('• '+x.nome+' (pasta '+x.pasta+'): '+x.copias+' cópias')}) }
+      var g={}; fich.forEach(function(x){g[x.pasta]=(g[x.pasta]||0)+1});
+      L.push('','Ficheiros por pasta:'); Object.keys(g).sort().forEach(function(k){L.push('• '+k+': '+g[k])});
+      A.modal({title:'🔎 Verificação da Drive',body:A.h('div',{style:{whiteSpace:'pre-wrap',fontSize:'13px',lineHeight:'1.55'},text:L.join('\n')}),actions:[{text:'Fechar',cls:'sec',value:true}]});
+    },function(e){ A.toast(e.message,'bad') });
   }
   function srvPasta(qual){
     var w=window.open('','_blank');   /* abre já (antes da resposta) para o browser não bloquear */
