@@ -268,9 +268,9 @@ body.bg-app #view:not(.legacy){background:transparent}
 /* barra flutuante: só ícones (o botão Drive fica no próprio módulo) */
 #dock .lbl,#dock #driveBtn{display:none!important}
 #dock .btn.sm{min-width:34px;height:34px;padding:0 9px;font-size:15px;line-height:1;display:inline-grid;place-items:center}
-/* menu de cima retrátil (só com rato): esconde-se 2 s depois de o rato sair; encosta-se o rato ao topo e desce */
+/* menu de cima retrátil (só com rato): esconde-se 0,35 s depois de o rato sair; encosta-se o rato ao topo e desce */
 body.bar-auto #app{position:relative}
-body.bar-auto #bar{position:absolute;left:0;right:0;top:0;transform:translateY(-100%);transition:transform .28s ease,box-shadow .28s ease;box-shadow:none}
+body.bar-auto #bar{position:absolute;left:0;right:0;top:0;transform:translateY(-100%);transition:transform .16s ease,box-shadow .16s ease;box-shadow:none}
 body.bar-auto.bar-show #bar{transform:none;box-shadow:0 8px 22px rgba(20,30,50,.18)}
 #barHot{display:none}
 body.bar-auto:not(.bar-show):not(.out) #barHot{display:block;position:fixed;top:0;left:0;right:0;height:8px;z-index:39}
@@ -817,7 +817,7 @@ function home(v){
   v.appendChild(A.h('div',{class:'ver',text:A.versaoFull,title:A.versaoFull}));
   if(!any)v.appendChild(A.h('div',{class:'card'},A.h('p',{class:'muted',text:'A sua conta ainda não tem áreas atribuídas. Fale com a direção.'})));
 }
-var VER='3.9.28|26/11/2026 14:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
+var VER='3.9.29|27/11/2026 11:30'.split('|'); A.versao='v'+VER[0]; A.versaoFull='Versão '+VER[0]+' · atualizada em '+(VER[1]||'');
 
 (function(){
   var cur=VER[0], shown=false;
@@ -1082,7 +1082,7 @@ A.boot=async function(){
     var bar=$('#bar'), hot=$('#barHot'), tm=0, mq=window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)');
     function on(){return !!(ui.bar&&mq&&mq.matches)}
     function show(){clearTimeout(tm);document.body.classList.add('bar-show')}
-    function later(){clearTimeout(tm);if(!on())return;tm=setTimeout(function(){if(!bar.contains(document.activeElement)||!document.activeElement.matches(':focus-visible'))document.body.classList.remove('bar-show')},2000)}
+    function later(){clearTimeout(tm);if(!on())return;tm=setTimeout(function(){if(!bar.contains(document.activeElement)||!document.activeElement.matches(':focus-visible'))document.body.classList.remove('bar-show')},350)}
     A.barAuto=function(){var a=on(),was=document.body.classList.contains('bar-auto');document.body.classList.toggle('bar-auto',a);if(a&&!was){show();later()}else if(!a){clearTimeout(tm);document.body.classList.remove('bar-show')}};
     if(hot)hot.addEventListener('mouseenter',show);
     bar.addEventListener('mouseenter',show);bar.addEventListener('mouseleave',later);
@@ -1151,13 +1151,15 @@ var TK='arca_drive_tok';
 var TRIM_NOMES=['janeiro a Março','Abril a Junho','Julho, Agosto e Setembro','Outubro a Dezembro'];
 var SEGREDOS=['arca_pin_hash','arca_role_codes'];            // nunca vão para a Drive
 var D={email:'',tok:null,exp:0,client:null,waiter:null,busy:false,last:null,err:'',account:'',started:false,
-       armed:false,cfgLoaded:false,asked:false,tries:0,lastTry:0,hash:{},folders:{},timer:null,touchT:null,panel:null,gsi:null};
+       armed:false,cfgLoaded:false,asked:false,srvS:null,srvT:null,tries:0,lastTry:0,hash:{},folders:{},timer:null,touchT:null,panel:null,gsi:null};
 var $=function(s){return document.querySelector(s)};
 
 function valid(){return !!D.tok&&Date.now()<D.exp}
 function allowed(){return !!(A.user&&A.isFull&&A.isFull())}
 function state(){
   if(!allowed())return 'off';
+  if(srvFail())return 'srverr';
+  if(srvOn()&&!valid())return 'auto';
   if(!D.email)return 'noemail';
   if(valid())return D.busy?'busy':(D.err?'error':'on');
   return D.err?'error':'needs';
@@ -1182,6 +1184,8 @@ function paintBar(){
   var map={noemail:['#9aa4b2','Drive: configurar','Cópia de segurança no Google Drive: ainda não configurada. Clique para indicar o email da conta Google.'],
     needs:['#f59e0b','Drive: ligar','Google Drive: falta ligar. Clique aqui para ligar (só abre a janela da Google quando clicar neste botão).'],
     on:['#22c55e','Drive ✓','Google Drive ligado'+(D.account?' ('+D.account+')':'')+(D.last?' · última cópia '+new Date(D.last).toLocaleString('pt-PT'):'')],
+    auto:['#22c55e','Drive ✓ auto','Cópia automática no servidor ligada ('+(D.srvS&&D.srvS.conta||'')+'): guarda sozinha todas as noites, mesmo sem ninguém na app.'+(D.srvS&&D.srvS.ultimo_ok?' Última cópia: '+new Date(D.srvS.ultimo_ok).toLocaleString('pt-PT'):'')],
+    srverr:['#ef4444','Drive: erro servidor','A cópia automática no servidor falhou: '+(D.srvS&&D.srvS.ultimo_erro||'erro')+'. Clique para ver e ligar outra vez.'],
     busy:['#f59e0b','Drive…','A guardar a cópia no Google Drive…'],
     error:['#ef4444','Drive: erro',D.err||'Erro no Google Drive. Clique para ver.']}[s]||['#9aa4b2','Drive',''];
   b.querySelector('.dd').style.background=map[0]; b.querySelector('.dl').textContent=map[1]; b.title=map[2];
@@ -1192,13 +1196,38 @@ function mountBar(){
   var lock=$('#lockBtn'); if(!lock)return;
   var b=A.h('button',{class:'btn sec sm',id:'driveBtn',type:'button',hidden:true,onclick:function(){
     /* já tem o email configurado e falta só ligar: um clique no botão liga (abre a janela da Google só agora) */
-    if(D.email&&!valid()&&!D.waiter&&state()!=='noemail'){ request(false).then(function(){A.toast('Google Drive ligado ✓');backup(true)},function(e){D.err=e.message;emit();A.toast(e.message,'bad');panel()}) }
+    if(D.email&&!valid()&&!D.waiter&&state()!=='noemail'&&state()!=='auto'&&state()!=='srverr'){ request(false).then(function(){A.toast('Google Drive ligado ✓');backup(true)},function(e){D.err=e.message;emit();A.toast(e.message,'bad');panel()}) }
     else panel()
   }},
     A.h('span',{class:'dd'}),A.h('span',{class:'dl lbl',text:'Drive'}));
   lock.parentNode.insertBefore(b,lock); paintBar();
 }
 function emit(){paintBar(); if(D.panel&&D.panel.refresh)D.panel.refresh()}
+/* estado da cópia automática no servidor (função drive-copia): atualizado ao entrar e de 10 em 10 minutos */
+function srvOn(){return !!(D.srvS&&D.srvS.servidor_pronto&&D.srvS.ligado)}
+function srvFail(){var q=D.srvS; return srvOn()&&!!q.ultimo_erro&&(!q.ultimo_ok||new Date(q.ultimo_erro_em)>new Date(q.ultimo_ok))}
+function srvRefresh(){
+  if(!allowed())return;
+  A.freshToken().then(function(tk){
+    return fetch(A.cfg.SUPA+'/functions/v1/drive-copia',{method:'POST',headers:{'Content-Type':'application/json',apikey:A.cfg.KEY,Authorization:'Bearer '+tk},body:JSON.stringify({acao:'estado'})});
+  }).then(function(r){return r.ok?r.json():null}).then(function(q){ if(q&&typeof q==='object'&&!q.erro){ D.srvS=q; emit() } }).catch(function(){});
+}
+
+/* pede ao servidor uma cópia quando há alterações (o servidor compara e só grava se algo mudou) */
+function srvSync(force){
+  if(!allowed()||!srvOn()||D.srvBusy)return Promise.resolve();
+  if(!force&&Date.now()-(D.srvLast||0)<25000)return Promise.resolve();
+  D.srvBusy=true; D.srvLast=Date.now();
+  if(force)A.toast('A guardar no servidor…');
+  return A.freshToken().then(function(tk){
+    return fetch(A.cfg.SUPA+'/functions/v1/drive-copia',{method:'POST',headers:{'Content-Type':'application/json',apikey:A.cfg.KEY,Authorization:'Bearer '+tk},body:JSON.stringify({acao:'executar',so_se_alterado:!force})});
+  }).then(function(r){
+    return r.json().catch(function(){return {}}).then(function(d){ if(!r.ok||d.erro)throw new Error(d.erro||('Erro '+r.status+' ao contactar o servidor.')); return d });
+  }).then(function(d){
+    if(force)A.toast(d.sem_alteracoes?'Já está tudo guardado ✓':(d.ocupado?'Já está a guardar… aguarde um momento.':'Guardado ✓ '+(d.resumo||'')));
+    if(d.resumo)srvRefresh();
+  },function(e){ if(force)A.toast(e.message,'bad'); srvRefresh() }).then(function(){ D.srvBusy=false });
+}
 
 /* ---- Google Identity Services ---- */
 function loadGsi(){
@@ -1271,7 +1300,7 @@ async function start(){
   D.started=true;
   try{var raw=sessionStorage.getItem(TK); if(raw){var o=JSON.parse(raw); if(o&&o.t&&Date.now()<o.e){D.tok=o.t;D.exp=o.e}}}catch(e){}
   try{var l=sessionStorage.getItem(TK+'_last'); if(l)D.last=l}catch(e){}
-  await loadCfg(); paintBar();
+  await loadCfg(); paintBar(); srvRefresh(); if(!D.srvT)D.srvT=setInterval(srvRefresh,10*60*1000);
   if(!D.email){ if(!D.asked){D.asked=true; setTimeout(function(){if(allowed())panel(true)},900)} return }
   arm();
   if(valid()){ readAccount(); touch(8000); return }
@@ -1281,8 +1310,8 @@ async function start(){
 function arm(){
   if(D.armed)return; D.armed=true;
   document.addEventListener('pointerdown',gesture,true);
-  D.timer=setInterval(function(){ D.tries=0; if(valid())backup(false); else if(!D.waiter&&D.email)emit() },60*1000);   /* de 1 em 1 min (só envia se houver alterações) */
-  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden'&&valid())backup(false) });
+  D.timer=setInterval(function(){ D.tries=0; if(srvOn()){ if(document.visibilityState==='visible')srvSync(false) } else if(valid())backup(false); else if(!D.waiter&&D.email)emit() },60*1000);   /* de 1 em 1 min (só envia se houver alterações) */
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden'){ if(srvOn())srvSync(false); else if(valid())backup(false) } });
 }
 /* um toque/clique qualquer na app serve de "gesto" para o browser deixar abrir a janela da Google */
 function wasOk(){try{return !!sessionStorage.getItem(TK+'_ok')}catch(e){return false}}
@@ -1294,7 +1323,7 @@ function gesture(){
 }
 function reset(){
   D.tok=null;D.exp=0;D.account='';D.err='';D.busy=false;D.started=false;D.email='';D.cfgLoaded=false;D.asked=false;D.tries=0;D.hash={};D.folders={};D.panel=null;D.armed=false;D.cancelled=false;
-  clearInterval(D.timer);clearTimeout(D.touchT);D.waiter=null;
+  clearInterval(D.timer);clearTimeout(D.touchT);D.waiter=null;D.srvS=null;clearInterval(D.srvT);D.srvT=null;
   document.removeEventListener('pointerdown',gesture,true);
   try{sessionStorage.removeItem(TK);sessionStorage.removeItem(TK+'_last');sessionStorage.removeItem(TK+'_ok')}catch(e){}
   try{Object.keys(sessionStorage).filter(function(k){return /^arca_(of|fat)_rascunho/.test(k)}).forEach(function(k){sessionStorage.removeItem(k)})}catch(e){}
@@ -1372,6 +1401,7 @@ function excelFin(movs,ano){
 var busyP=null;
 async function backup(manual){
   if(!allowed())return;
+  if(srvOn()){ if(manual)return srvSync(true); return }   /* servidor ligado: é ele que grava na Drive (sem duplicados) */
   if(!valid()){ if(manual)A.toast('Ligue primeiro o Google Drive.','bad'); return }
   if(busyP){ if(!manual)D.again=true; return busyP }
   busyP=(async function(){
@@ -1422,7 +1452,7 @@ async function backup(manual){
 }
 function touch(ms){
   if(!allowed()||!D.email)return;
-  clearTimeout(D.touchT); D.touchT=setTimeout(function(){ if(valid())backup(false) },ms||1500);
+  clearTimeout(D.touchT); D.touchT=setTimeout(function(){ if(srvOn())srvSync(false); else if(valid())backup(false) },ms||1500);
 }
 
 /* ---- painel (configuração + estado) ---- */
@@ -1436,6 +1466,8 @@ function panel(first){
     status.innerHTML='';
     var line=function(t){status.appendChild(A.h('div',{text:t}))};
     if(s==='on'||s==='busy')line('🟢 Ligado ao Google Drive'+(D.account?' ('+D.account+')':'')+(ul?' · última cópia: '+ul:' · ainda sem cópia nesta sessão')+(s==='busy'?' · a guardar…':''));
+    else if(s==='auto')line('🟢 Cópia automática no servidor ligada'+(D.srvS&&D.srvS.conta?' ('+D.srvS.conta+')':'')+(D.srvS&&D.srvS.ultimo_ok?' · última cópia: '+new Date(D.srvS.ultimo_ok).toLocaleString('pt-PT'):'')+'. Não é preciso ligar o Drive neste computador.');
+    else if(s==='srverr')line('🔴 A cópia automática no servidor falhou: '+(D.srvS&&D.srvS.ultimo_erro||'erro')+'. Carregue em “Ligar outra vez” na caixa abaixo.');
     else if(s==='needs')line('🟠 Conta configurada ('+D.email+'), mas a ligação precisa de um clique: carregue em “Ligar Google Drive”.');
     else if(s==='error')line('🔴 '+(D.err||'Erro no Google Drive.'));
     else line('⚪ Google Drive ainda não configurado.');
@@ -1460,7 +1492,7 @@ function panel(first){
     var linha=A.h('div',{class:'muted',text:'A verificar…'}); srv.appendChild(linha);
     var bt=A.h('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'8px'}}); srv.appendChild(bt);
     srvFn({acao:'estado'}).then(function(s){
-      bt.innerHTML='';
+      bt.innerHTML=''; D.srvS=s; paintBar();
       if(!s.servidor_pronto){ linha.textContent='⚪ Ainda por ativar: falta configurar a chave da Google no servidor. Fale com quem gere a apk.'; return; }
       if(!s.ligado){
         linha.textContent='⚪ Desligada. Ligue uma única vez e passa a guardar sozinha, todas as noites, as Faturas e o Financeiro na Drive da associação, mesmo sem ninguém ter a app aberta.';
